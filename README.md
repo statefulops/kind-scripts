@@ -48,3 +48,15 @@ aws --endpoint-url http://localhost:9000 s3 mb s3://my-kind-bucket
 
 aws --endpoint-url http://localhost:9000 s3 ls
 ```
+
+
+## NFS Enabled 3 Workers
+
+```shell
+cd nfs
+./create-cluster.sh
+
+or
+
+./create-cluster.sh v1.37.0 s3-cluster
+```
