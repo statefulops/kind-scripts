@@ -13,10 +13,47 @@ fi
 
 K8S_VERSION="${1:-$DEFAULT_K8S_VERSION}"
 CLUSTER_NAME="${2:-}"
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+CONFIG_FILE="$(mktemp -t kind-nfs-XXXXXX.yaml)"
+trap 'rm -f "${CONFIG_FILE}"' EXIT
+
+cat > "${CONFIG_FILE}" <<'EOF'
+kind: Cluster
+apiVersion: kind.x-k8s.io/v1alpha4
+nodes:
+- role: control-plane
+  extraPortMappings:
+  - containerPort: 30090
+    hostPort: 9000
+    protocol: TCP
+  - containerPort: 30091
+    hostPort: 9001
+    protocol: TCP
+- role: worker
+  kubeadmConfigPatches:
+  - |
+    kind: JoinConfiguration
+    nodeRegistration:
+      kubeletExtraArgs:
+        node-labels: "topology.kubernetes.io/zone=AZ-A"
+- role: worker
+  kubeadmConfigPatches:
+  - |
+    kind: JoinConfiguration
+    nodeRegistration:
+      kubeletExtraArgs:
+        node-labels: "topology.kubernetes.io/zone=AZ-B"
+- role: worker
+  kubeadmConfigPatches:
+  - |
+    kind: JoinConfiguration
+    nodeRegistration:
+      kubeletExtraArgs:
+        node-labels: "topology.kubernetes.io/zone=AZ-C"
+EOF
 
 args=(
-  --config "${SCRIPT_DIR}/cluster-nfs.yaml"
+  --config "${CONFIG_FILE}"
   --image "kindest/node:${K8S_VERSION}"
 )
 
