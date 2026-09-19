@@ -65,16 +65,29 @@ kind create cluster "${args[@]}"
 
 
 
+RUSTFS_NAMESPACE="rustfs"
+RUSTFS_SECRET_NAME="rustfs-admin-credentials"
+ADMIN_USER="myadminuser"
+ADMIN_PASSWORD="$(openssl rand -base64 24)"
+
+kubectl create namespace "${RUSTFS_NAMESPACE}" --dry-run=client -o yaml | kubectl apply -f -
+
+kubectl create secret generic "${RUSTFS_SECRET_NAME}" \
+  --namespace "${RUSTFS_NAMESPACE}" \
+  --from-literal=access-key="${ADMIN_USER}" \
+  --from-literal=secret-key="${ADMIN_PASSWORD}" \
+  --dry-run=client -o yaml | kubectl apply -f -
+
 helm repo add rustfs https://charts.rustfs.com
 helm repo update
 
 helm install rustfs rustfs/rustfs \
-  --namespace rustfs \
+  --namespace "${RUSTFS_NAMESPACE}" \
   --create-namespace \
   --set mode.standalone.enabled=true \
   --set mode.distributed.enabled=false \
-  --set secret.rustfs.access_key=myadminuser \
-  --set secret.rustfs.secret_key=myadminpassword \
+  --set secret.rustfs.access_key="${ADMIN_USER}" \
+  --set secret.rustfs.secret_key="${ADMIN_PASSWORD}" \
   --set storageclass.name=standard \
   --set storageclass.dataStorageSize=10Gi \
   --set service.type=NodePort \
@@ -82,13 +95,18 @@ helm install rustfs rustfs/rustfs \
   --set service.console.nodePort=30091 \
   --set service.s3=null
 
-kubectl wait --for=condition=Ready pod -l app.kubernetes.io/name=rustfs  --timeout=2m -n rustfs
+kubectl wait --for=condition=Ready pod -l app.kubernetes.io/name=rustfs  --timeout=2m -n "${RUSTFS_NAMESPACE}"
 
-export AWS_ACCESS_KEY_ID=myadminuser
-export AWS_SECRET_ACCESS_KEY=myadminpassword
+export AWS_ACCESS_KEY_ID="${ADMIN_USER}"
+export AWS_SECRET_ACCESS_KEY="${ADMIN_PASSWORD}"
 export AWS_DEFAULT_REGION=us-east-1
 
 aws --endpoint-url http://localhost:9000 s3 mb s3://my-kind-bucket
 
 
 aws --endpoint-url http://localhost:9000 s3 ls
+
+echo
+echo "RustFS admin credentials stored in Kubernetes secret '${RUSTFS_SECRET_NAME}' (namespace: ${RUSTFS_NAMESPACE})"
+echo "Retrieve the password later with:"
+echo "  kubectl get secret ${RUSTFS_SECRET_NAME} -n ${RUSTFS_NAMESPACE} -o jsonpath='{.data.secret-key}' | base64 -d"

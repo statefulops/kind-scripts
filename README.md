@@ -65,14 +65,21 @@ WEB UI on
 ```shell
 http://localhost:9001
 user : myadminuser
-password: myadminpassword
+password: (randomly generated per run, see below)
+```
+
+The password is generated fresh on each run and stored in a Kubernetes secret named
+`rustfs-admin-credentials` in the `rustfs` namespace. Retrieve it with:
+
+```shell
+kubectl get secret rustfs-admin-credentials -n rustfs -o jsonpath='{.data.secret-key}' | base64 -d
 ```
 
 CLI Access with AWS CLI
 
 ```shell
 export AWS_ACCESS_KEY_ID=myadminuser
-export AWS_SECRET_ACCESS_KEY=myadminpassword
+export AWS_SECRET_ACCESS_KEY=$(kubectl get secret rustfs-admin-credentials -n rustfs -o jsonpath='{.data.secret-key}' | base64 -d)
 export AWS_DEFAULT_REGION=us-east-1
 
 aws --endpoint-url http://localhost:9000 s3 mb s3://my-kind-bucket
