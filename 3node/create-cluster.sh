@@ -11,6 +11,20 @@ if [ "${1:-}" = "-h" ] || [ "${1:-}" = "--help" ]; then
   exit 1
 fi
 
+REQUIRED_TOOLS=(kind)
+missing_tools=()
+for tool in "${REQUIRED_TOOLS[@]}"; do
+  if ! command -v "$tool" >/dev/null 2>&1; then
+    missing_tools+=("$tool")
+  fi
+done
+
+if [ "${#missing_tools[@]}" -gt 0 ]; then
+  echo "Error: the following required tools are not installed or not on PATH: ${missing_tools[*]}" >&2
+  echo "Please install them and try again." >&2
+  exit 1
+fi
+
 K8S_VERSION="${1:-$DEFAULT_K8S_VERSION}"
 CLUSTER_NAME="${2:-}"
 
