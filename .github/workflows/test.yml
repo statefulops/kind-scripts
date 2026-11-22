@@ -1,0 +1,63 @@
+name: Test
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - name: ShellCheck
+        run: shellcheck --severity=warning */create-cluster.sh tests/*.sh
+
+  unit:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v5
+      - name: Unit tests
+        run: tests/unit.sh
+
+  e2e:
+    needs: [lint, unit]
+    strategy:
+      fail-fast: false
+      matrix:
+        script: [3node, nfs, s3, s3-with-ssl]
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v5
+
+      # The runner image ships kind, but it can lag behind the node image the
+      # scripts default to, so install the latest release.
+      - name: Install kind
+        run: |
+          curl -fsSLo kind https://github.com/kubernetes-sigs/kind/releases/latest/download/kind-linux-amd64
+          sudo install -m 0755 kind /usr/local/bin/kind
+          rm kind
+
+      - name: Tool versions
+        run: |
+          kind version
+          helm version --short
+          kubectl version --client
+          aws --version
+          openssl version
+
+      - name: E2E test
+        run: tests/e2e.sh ${{ matrix.script }}
