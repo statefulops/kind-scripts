@@ -134,7 +134,7 @@ esac
 
 CLUSTER_IP=$(kubectl get svc "$SVC" -n "$NS" -o jsonpath='{.spec.clusterIP}')
 WORK=$(mktemp -d)
-trap 'rm -rf "$WORK"' EXIT
+trap 'rm -rf "$WORK" "${CONFIG_FILE}"' EXIT
 
 cat > "$WORK/san.cnf" <<EOF
 [req]

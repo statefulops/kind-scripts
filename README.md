@@ -110,3 +110,20 @@ curl -fsSL https://raw.githubusercontent.com/statefulops/kind-scripts/main/nfs/c
 ```
 
 For more info : https://github.com/kubernetes-sigs/nfs-ganesha-server-and-external-provisioner/blob/master/charts/nfs-server-provisioner/README.md
+## Testing
+
+Unit tests replace kind, helm, kubectl, aws and openssl with stub commands, so they need nothing installed and run in a few seconds:
+
+```shell
+tests/unit.sh
+```
+
+End-to-end tests create a real cluster with one script, check it works (nodes and zone labels, an S3 round trip, an NFS volume), then delete it. They need Docker and the script's tools. The cluster is named `e2e-<script>`. Run them one at a time, because the nfs and s3 clusters use the same host ports:
+
+```shell
+tests/e2e.sh 3node
+tests/e2e.sh s3
+KEEP_CLUSTER=1 tests/e2e.sh nfs   # leave the cluster running afterwards
+```
+
+GitHub Actions ([.github/workflows/test.yml](.github/workflows/test.yml)) runs ShellCheck, runs the unit tests on Ubuntu and macOS, and runs the end-to-end test for every script on Ubuntu.
